@@ -1,0 +1,40 @@
+name: "user_tower"
+platform: "onnxruntime_onnx"
+max_batch_size: 128
+
+input [
+  {
+    name: "user_id"
+    data_type: TYPE_INT64
+    dims: [ 1 ]
+  },
+  {
+    name: "user_genres"
+    data_type: TYPE_FP32
+    dims: [ 18 ]
+  },
+  {
+    name: "user_stats"
+    data_type: TYPE_FP32
+    dims: [ 2 ]
+  }
+]
+
+output [
+  {
+    name: "user_embedding"
+    data_type: TYPE_FP32
+    dims: [ 64 ]
+  }
+]
+
+dynamic_batching {
+  max_queue_delay_microseconds: 5000
+}
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_CPU
+  }
+]

@@ -1,0 +1,35 @@
+{
+  "Stage1_Retrieval_Only": {
+    "ndcg@5": 0.0175,
+    "ndcg@10": 0.0149,
+    "ndcg@20": 0.0205,
+    "recall@20": 0.0138,
+    "recall@50": 0.0423,
+    "recall@100": 0.0891,
+    "hit_rate@10": 0.1667,
+    "mrr": 0.0626,
+    "latency_ms": 3.28
+  },
+  "Stage2_Wide_and_Deep": {
+    "ndcg@5": 0.0081,
+    "ndcg@10": 0.0178,
+    "ndcg@20": 0.0212,
+    "recall@20": 0.0126,
+    "recall@50": 0.0379,
+    "recall@100": 0.0891,
+    "hit_rate@10": 0.2222,
+    "mrr": 0.0537,
+    "latency_ms": 2.55
+  },
+  "Stage2_DCN_v2": {
+    "ndcg@5": 0.0073,
+    "ndcg@10": 0.0086,
+    "ndcg@20": 0.014,
+    "recall@20": 0.0107,
+    "recall@50": 0.0332,
+    "recall@100": 0.0891,
+    "hit_rate@10": 0.0556,
+    "mrr": 0.0302,
+    "latency_ms": 2.95
+  }
+}

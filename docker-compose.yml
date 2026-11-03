@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI Two-Stage Recommendation Gateway & Web UI
+  recsys-gateway:
+    build: .
+    container_name: recsys-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - TRITON_URL=http://triton-server:8000
+    depends_on:
+      - redis
+      - triton-server
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./triton_model_repository:/app/triton_model_repository
+
+  # 2. Redis Caching Layer (Cache-aside with TTL)
+  redis:
+    image: redis:7.2-alpine
+    container_name: recsys-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+
+  # 3. Triton Inference Server (NVIDIA Triton with ONNXRuntime backend)
+  triton-server:
+    image: nvcr.io/nvidia/tritonserver:23.10-py3
+    container_name: recsys-triton
+    restart: always
+    ports:
+      - "8000:8000" # HTTP inference endpoint
+      - "8001:8001" # gRPC inference endpoint
+      - "8002:8002" # Metrics / Prometheus endpoint
+    command: tritonserver --model-repository=/models --strict-model-config=false
+    volumes:
+      - ./triton_model_repository:/models
+
+volumes:
+  redis_data:
