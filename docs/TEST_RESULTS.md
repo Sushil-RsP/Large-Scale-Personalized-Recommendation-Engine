@@ -86,3 +86,4 @@ P50 and P95 latency measurements across 500 simulated production requests:
 | **Total Cached Pipeline Latency** | **0.82 ms** | **1.25 ms** | $\le 5\,\text{ms}$ |
 
 All latency metrics comfortably surpass the industrial $\le 50\,\text{ms}$ SLA threshold.
+

@@ -133,3 +133,4 @@ Returns health status, total indexed items, active cache backend, and Triton ser
 
 ### `POST /cache/clear`
 Flushes all cached recommendation entries across Redis and in-memory fallback stores.
+

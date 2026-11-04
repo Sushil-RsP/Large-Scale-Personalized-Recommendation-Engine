@@ -204,3 +204,4 @@ docker-compose up --build
 - [x] **Test Results & Benchmarks:** All 18 pytest tests passing; offline evaluations documented in `docs/TEST_RESULTS.md`.
 - [x] **10-Minute Presentation:** Structured slide deck and speaker notes in `docs/PRESENTATION.md`.
 - [x] **Individual Reflection:** Detailed ownership breakdown and technical learnings in `docs/INTERN_REFLECTION.md`.
+

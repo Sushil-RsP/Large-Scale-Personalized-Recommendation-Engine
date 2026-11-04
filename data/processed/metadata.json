@@ -1,0 +1,30 @@
+{
+  "num_users": 523,
+  "num_items": 9743,
+  "num_genres": 18,
+  "genres": [
+    "Action",
+    "Adventure",
+    "Animation",
+    "Children",
+    "Comedy",
+    "Crime",
+    "Documentary",
+    "Drama",
+    "Fantasy",
+    "Film-Noir",
+    "Horror",
+    "Musical",
+    "Mystery",
+    "Romance",
+    "Sci-Fi",
+    "Thriller",
+    "War",
+    "Western"
+  ],
+  "train_samples": 80669,
+  "val_samples": 10083,
+  "test_samples": 10084,
+  "t_train_cutoff": 1458635171.0,
+  "t_val_cutoff": 1498029447.5
+}

@@ -130,3 +130,4 @@ flowchart LR
 
 - **Inference Redundancy:** FastAPI connects to Triton Inference Server via HTTP/gRPC. If Triton is absent in local dev/testing environments, it automatically uses identical ONNX graphs via embedded ONNXRuntime sessions.
 - **Retraining Orchestration:** Apache Airflow DAG orchestrates the end-to-end retraining lifecycle on a cron schedule (`0 2 * * *`).
+

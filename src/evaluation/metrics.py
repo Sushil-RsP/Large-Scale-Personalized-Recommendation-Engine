@@ -61,4 +61,3 @@ def compute_mrr(recommended_ids, ground_truth_set, max_k=100):
         if item_id in ground_truth_set:
             return float(1.0 / rank)
     return 0.0
-
