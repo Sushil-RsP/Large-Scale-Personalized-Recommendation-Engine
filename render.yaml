@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: recsys-engine
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: "pip install --upgrade pip && pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install faiss-cpu fastapi uvicorn pydantic pandas pyarrow scikit-learn scipy requests"
+    startCommand: "uvicorn src.api.app:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.11.9
