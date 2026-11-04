@@ -8,30 +8,30 @@ To resolve this, this system implements a classic **Two-Stage Funnel Architectur
 
 ```mermaid
 flowchart TD
-    User([User Request / Device]) --> Cache{Redis Cache-Aside}
-    Cache -- "Cache Hit (<1ms)" --> Return[Return Cached Recommendations]
-    Cache -- "Cache Miss" --> ColdCheck{Is User Cold?}
+    User(["User Request / Device"]) --> Cache{"Redis Cache-Aside"}
+    Cache -->|"Cache Hit under 1ms"| Return["Return Cached Recommendations"]
+    Cache -->|"Cache Miss"| ColdCheck{"Is User Cold?"}
 
-    ColdCheck -- "Yes (New User)" --> Fallback[Cold-Start Fallback Engine\nBayesian Popularity / Onboarding Genre Filter]
-    ColdCheck -- "No (Warm User)" --> Stage1[Stage 1: Candidate Retrieval]
+    ColdCheck -->|"Yes - New User"| Fallback["Cold-Start Fallback Engine<br/>Bayesian Popularity and Onboarding Filter"]
+    ColdCheck -->|"No - Warm User"| Stage1["Stage 1: Candidate Retrieval"]
 
-    subgraph "Stage 1: Retrieval Funnel (~3ms)"
-        Stage1 --> UserTower["User Tower (ONNX/Triton)\nEmbeds ID + History + Genres -> R^64"]
-        UserTower --> FAISS["FAISS Vector Index (IndexFlatIP / IVF)\nMIPS Dot-Product Search\n9,742 Catalog Items -> Top 100 Candidates"]
+    subgraph SubgraphStage1 ["Stage 1: Retrieval Funnel"]
+        Stage1 --> UserTower["User Tower ONNX/Triton<br/>Embeds Profile into 64D Space"]
+        UserTower --> FAISS["FAISS Vector Index<br/>MIPS Dot-Product Search<br/>9,742 Items to Top 100"]
     end
 
-    subgraph "Stage 2: Heavy Re-Ranking (~5ms)"
-        FAISS --> FeatureJoin["Dynamic Contextual Feature Assembly\nUser Stats + Item Stats + Genres + Cosine Sim"]
-        FeatureJoin --> Router{A/B Traffic Router}
-        Router -- "Variant A (50%)" --> WideDeep["Wide & Deep Model\nLinear Memorization + MLP Generalization"]
-        Router -- "Variant B (50%)" --> DCN["Deep & Cross Network (DCN-v2)\nDegree-3 Explicit Feature Crosses + Deep MLP"]
+    subgraph SubgraphStage2 ["Stage 2: Heavy Re-Ranking"]
+        FAISS --> FeatureJoin["Dynamic Contextual Feature Assembly<br/>User Stats + Item Stats + Genres"]
+        FeatureJoin --> Router{"A/B Traffic Router"}
+        Router -->|"Variant A 50%"| WideDeep["Wide and Deep Model<br/>Linear Memorization + MLP Generalization"]
+        Router -->|"Variant B 50%"| DCN["Deep and Cross Network DCN-v2<br/>Explicit Feature Crosses + Deep MLP"]
         WideDeep --> ReRank["Sort by Predicted P(Click)"]
         DCN --> ReRank
     end
 
-    ReRank --> OutputTopK["Slice Top-K Items (e.g. K=10)"]
+    ReRank --> OutputTopK["Slice Top-K Items"]
     Fallback --> OutputTopK
-    OutputTopK --> WriteCache["Write to Redis Cache (TTL=300s)"]
+    OutputTopK --> WriteCache["Write to Redis Cache - TTL 300s"]
     WriteCache --> Return
 ```
 

@@ -21,30 +21,30 @@ An industrial-grade, two-stage personalized recommendation engine modeled after 
 
 ```mermaid
 flowchart TD
-    UserQuery([User Request / Client]) --> RedisCache{Redis Cache-Aside}
-    RedisCache -- "Cache Hit (<1ms)" --> ServeCache[Return Cached Recommendations]
-    RedisCache -- "Cache Miss" --> CheckCold{Cold-Start User?}
+    UserQuery(["User Request / Client"]) --> RedisCache{"Redis Cache-Aside"}
+    RedisCache -->|"Cache Hit under 1ms"| ServeCache["Return Cached Recommendations"]
+    RedisCache -->|"Cache Miss"| CheckCold{"Cold-Start User?"}
 
-    CheckCold -- "Yes (New User)" --> ColdFallback[Bayesian Popularity & Content Onboarding Fallback]
-    CheckCold -- "No (Warm User)" --> Stage1Retrieval[Stage 1: Two-Tower Candidate Retrieval]
+    CheckCold -->|"Yes - New User"| ColdFallback["Bayesian Popularity and Content Fallback"]
+    CheckCold -->|"No - Warm User"| Stage1Retrieval["Stage 1: Two-Tower Retrieval"]
 
-    subgraph "Stage 1: High-Recall Funnel (~3ms)"
-        Stage1Retrieval --> UserTower[User Tower ONNX\nProjects Profile -> R^64]
-        UserTower --> FAISSIndex[FAISS Vector Index\nMIPS Dot-Product Search\n9,742 Items -> Top 100 Candidates]
+    subgraph SubgraphStage1 ["Stage 1: High-Recall Funnel"]
+        Stage1Retrieval --> UserTower["User Tower ONNX<br/>Projects Profile to 64D Space"]
+        UserTower --> FAISSIndex["FAISS Vector Index<br/>MIPS Dot-Product Search<br/>9,742 Items to Top 100"]
     end
 
-    subgraph "Stage 2: High-Precision Funnel (~5ms)"
-        FAISSIndex --> FeatureAssembly[Dynamic Feature Assembly\nUser Stats + Item Stats + Genres + Cosine Sim]
-        FeatureAssembly --> ABRouter{A/B Router}
-        ABRouter -- "50% Traffic" --> WideDeep[Wide & Deep Model\nMemorization + Generalization]
-        ABRouter -- "50% Traffic" --> DCNv2[Deep & Cross Network (DCN-v2)\nExplicit Degree-3 Cross Layers]
-        WideDeep --> Sorter[Sort Candidates by Predicted CTR]
+    subgraph SubgraphStage2 ["Stage 2: High-Precision Funnel"]
+        FAISSIndex --> FeatureAssembly["Dynamic Feature Assembly<br/>User Stats + Item Stats + Genres"]
+        FeatureAssembly --> ABRouter{"A/B Router"}
+        ABRouter -->|"50% Traffic"| WideDeep["Wide and Deep Model<br/>Memorization + Generalization"]
+        ABRouter -->|"50% Traffic"| DCNv2["Deep and Cross Network DCN-v2<br/>Explicit Degree-3 Cross Layers"]
+        WideDeep --> Sorter["Sort Candidates by Predicted CTR"]
         DCNv2 --> Sorter
     end
 
-    Sorter --> FinalSlice[Output Top-K Ranked Feed]
+    Sorter --> FinalSlice["Output Top-K Ranked Feed"]
     ColdFallback --> FinalSlice
-    FinalSlice --> CacheWrite[Write to Redis Cache with TTL=300s]
+    FinalSlice --> CacheWrite["Write to Redis Cache - TTL 300s"]
     CacheWrite --> ServeCache
 ```
 
