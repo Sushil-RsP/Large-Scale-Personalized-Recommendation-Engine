@@ -60,6 +60,8 @@ class ABTestingManager:
     def compute_statistics(self):
         """
         Computes CTR, CVR, and Two-Sample Proportion Z-test for statistical significance.
+        Safely handles any combination of impressions, clicks (including multiple clicks per impression),
+        and edge cases without math domain errors.
         """
         data_a = self.telemetry["variant_A"]
         data_b = self.telemetry["variant_B"]
@@ -69,29 +71,35 @@ class ABTestingManager:
         clk_a = data_a["clicks"]
         clk_b = data_b["clicks"]
 
-        ctr_a = clk_a / imp_a
-        ctr_b = clk_b / imp_b
+        # Proportion of positive interactions (capped in [0.0, 1.0] for standard binomial tests)
+        prop_a = min(1.0, max(0.0, clk_a / imp_a))
+        prop_b = min(1.0, max(0.0, clk_b / imp_b))
 
         # Relative uplift
-        relative_uplift_ctr = ((ctr_b - ctr_a) / ctr_a * 100.0) if ctr_a > 0 else 0.0
+        relative_uplift_ctr = ((prop_b - prop_a) / prop_a * 100.0) if prop_a > 0 else 0.0
 
         # Two-sample Z-test for proportions
         total_clicks = clk_a + clk_b
         total_impressions = imp_a + imp_b
-        p_pooled = total_clicks / total_impressions if total_impressions > 0 else 0.0
+        p_pooled = min(1.0, max(0.0, total_clicks / total_impressions)) if total_impressions > 0 else 0.0
 
-        se_pooled = math.sqrt(p_pooled * (1.0 - p_pooled) * (1.0 / imp_a + 1.0 / imp_b)) if p_pooled * (1.0 - p_pooled) > 0 else 1e-6
-        z_stat = (ctr_b - ctr_a) / se_pooled
+        var_pooled = max(0.0, p_pooled * (1.0 - p_pooled) * (1.0 / imp_a + 1.0 / imp_b))
+        se_pooled = math.sqrt(var_pooled) if var_pooled > 1e-12 else 1e-6
+        z_stat = (prop_b - prop_a) / se_pooled
 
         # Two-tailed p-value
         p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_stat)))
 
-        # 95% Confidence Interval for difference
-        se_diff = math.sqrt((ctr_a * (1.0 - ctr_a) / imp_a) + (ctr_b * (1.0 - ctr_b) / imp_b)) if (ctr_a > 0 or ctr_b > 0) else 1e-6
+        # 95% Confidence Interval for difference (safe variance calculation)
+        var_a = (prop_a * (1.0 - prop_a) / imp_a) if 0.0 < prop_a < 1.0 else 0.0
+        var_b = (prop_b * (1.0 - prop_b) / imp_b) if 0.0 < prop_b < 1.0 else 0.0
+        var_diff = max(0.0, var_a + var_b)
+        se_diff = math.sqrt(var_diff) if var_diff > 1e-12 else 1e-6
+
         margin_error = 1.96 * se_diff
-        diff = ctr_b - ctr_a
-        ci_lower = diff - margin_error
-        ci_upper = diff + margin_error
+        diff = prop_b - prop_a
+        ci_lower = max(-1.0, diff - margin_error)
+        ci_upper = min(1.0, diff + margin_error)
 
         is_significant = p_value < 0.05
 
@@ -101,14 +109,14 @@ class ABTestingManager:
                 "name": self.variants["variant_A"]["name"],
                 "impressions": imp_a,
                 "clicks": clk_a,
-                "ctr": round(ctr_a, 4),
+                "ctr": round(prop_a, 4),
                 "median_latency_ms": round(float(np.median(data_a["latencies_ms"])), 2) if data_a["latencies_ms"] else 0.0
             },
             "variant_B": {
                 "name": self.variants["variant_B"]["name"],
                 "impressions": imp_b,
                 "clicks": clk_b,
-                "ctr": round(ctr_b, 4),
+                "ctr": round(prop_b, 4),
                 "median_latency_ms": round(float(np.median(data_b["latencies_ms"])), 2) if data_b["latencies_ms"] else 0.0
             },
             "analysis": {

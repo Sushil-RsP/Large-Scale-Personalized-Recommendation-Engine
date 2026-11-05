@@ -37,3 +37,23 @@ def test_mrr():
     # No hit
     assert compute_mrr([10, 20, 30], {99}) == 0.0
 
+def test_ab_testing_clicks_exceed_impressions_no_math_domain_error():
+    """Verify that multiple clicks on a single impression do not cause math domain error."""
+    from src.evaluation.ab_testing import ABTestingManager
+    mgr = ABTestingManager()
+    # 1 impression, 5 clicks
+    mgr.record_impression("variant_A", 10.0)
+    for _ in range(5):
+        mgr.record_event("variant_A", "click")
+
+    # 1 impression, 3 clicks
+    mgr.record_impression("variant_B", 12.0)
+    for _ in range(3):
+        mgr.record_event("variant_B", "click")
+
+    stats = mgr.compute_statistics()
+    assert stats["variant_A"]["clicks"] == 5
+    assert stats["variant_A"]["ctr"] == 1.0
+    assert "p_value" in stats["analysis"]
+
+
