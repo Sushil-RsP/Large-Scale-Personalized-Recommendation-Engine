@@ -1,14 +1,3 @@
-"""
-Online A/B Testing Simulator & Statistical Inference Engine.
-Compares two ranking architectures:
-- Variant A: Wide & Deep
-- Variant B: DCN-v2 (Deep & Cross Network)
-Tracks:
-- Impressions, Clicks, Conversions, Latency distributions
-- Click-Through Rate (CTR) and Conversion Rate (CVR)
-- Two-Sample Proportion Z-Test (z-statistic, p-value, 95% Confidence Interval)
-"""
-
 import os
 import sys
 import math
@@ -35,14 +24,9 @@ class ABTestingManager:
         }
 
     def assign_variant(self, user_id):
-        """
-        Deterministic consistent hashing for user routing.
-        Ensures a user consistently sees the same variant across sessions.
-        """
         hash_input = f"{self.experiment_name}:{user_id}".encode("utf-8")
         hash_val = int(hashlib.md5(hash_input).hexdigest(), 16)
         bucket = hash_val % 100
-        # 50/50 traffic split
         return "variant_A" if bucket < 50 else "variant_B"
 
     def record_impression(self, variant, latency_ms):
@@ -58,11 +42,6 @@ class ABTestingManager:
                 self.telemetry[variant]["conversions"] += 1
 
     def compute_statistics(self):
-        """
-        Computes CTR, CVR, and Two-Sample Proportion Z-test for statistical significance.
-        Safely handles any combination of impressions, clicks (including multiple clicks per impression),
-        and edge cases without math domain errors.
-        """
         data_a = self.telemetry["variant_A"]
         data_b = self.telemetry["variant_B"]
 
@@ -71,14 +50,11 @@ class ABTestingManager:
         clk_a = data_a["clicks"]
         clk_b = data_b["clicks"]
 
-        # Proportion of positive interactions (capped in [0.0, 1.0] for standard binomial tests)
         prop_a = min(1.0, max(0.0, clk_a / imp_a))
         prop_b = min(1.0, max(0.0, clk_b / imp_b))
 
-        # Relative uplift
         relative_uplift_ctr = ((prop_b - prop_a) / prop_a * 100.0) if prop_a > 0 else 0.0
 
-        # Two-sample Z-test for proportions
         total_clicks = clk_a + clk_b
         total_impressions = imp_a + imp_b
         p_pooled = min(1.0, max(0.0, total_clicks / total_impressions)) if total_impressions > 0 else 0.0
@@ -87,10 +63,8 @@ class ABTestingManager:
         se_pooled = math.sqrt(var_pooled) if var_pooled > 1e-12 else 1e-6
         z_stat = (prop_b - prop_a) / se_pooled
 
-        # Two-tailed p-value
         p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_stat)))
 
-        # 95% Confidence Interval for difference (safe variance calculation)
         var_a = (prop_a * (1.0 - prop_a) / imp_a) if 0.0 < prop_a < 1.0 else 0.0
         var_b = (prop_b * (1.0 - prop_b) / imp_b) if 0.0 < prop_b < 1.0 else 0.0
         var_diff = max(0.0, var_a + var_b)
@@ -136,16 +110,11 @@ class ABTestingManager:
         }
 
 def simulate_online_ab_traffic(n_users=600):
-    """
-    Simulates live production traffic with realistic user engagement behavior.
-    """
     from src.serving.pipeline import RecommendationPipeline
     pipeline = RecommendationPipeline()
     ab_manager = ABTestingManager()
 
-    print(f"Simulating online A/B testing experiment across {n_users} user requests...")
     user_ids = list(pipeline.user_meta.keys())
-
     np.random.seed(42)
     for i in range(n_users):
         uid = int(np.random.choice(user_ids))
@@ -158,23 +127,15 @@ def simulate_online_ab_traffic(n_users=600):
 
         ab_manager.record_impression(variant, lat)
 
-        # Simulate user click behavior based on model predicted CTR
         recs = resp["recommendations"]
         for rank, item in enumerate(recs[:5], start=1):
             pred_score = item.get("predicted_ctr", 0.5)
-            # Position bias: higher ranked items get higher base view prob
             view_prob = 1.0 / math.log2(rank + 1)
-            # Probability of clicking
             click_prob = pred_score * view_prob
             if np.random.rand() < click_prob:
                 ab_manager.record_event(variant, event_type="click")
-                # Conversion probability
                 if np.random.rand() < 0.25:
                     ab_manager.record_event(variant, event_type="conversion")
                 break
 
-    stats_report = ab_manager.compute_statistics()
-    print("\n--- Online A/B Test Results Summary ---")
-    print(json.dumps(stats_report, indent=2))
-    return stats_report
-
+    return ab_manager.compute_statistics()

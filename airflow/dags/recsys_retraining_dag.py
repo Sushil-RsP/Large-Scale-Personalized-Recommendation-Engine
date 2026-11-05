@@ -1,38 +1,19 @@
-"""
-Apache Airflow DAG: Scheduled Retraining & Deployment Pipeline for Two-Stage Recommender.
-Schedule: Daily at 02:00 UTC ('0 2 * * *')
-Pipeline Tasks:
-1. extract_and_preprocess_spark: Ingests interaction logs and generates features with temporal boundaries.
-2. train_two_tower_retrieval: Retrains User/Item two-tower model on recent positive engagement.
-3. update_faiss_index: Regenerates item embeddings and updates FAISS vector index.
-4. train_ranking_models: Retrains DCN-v2 and Wide & Deep candidate rankers.
-5. evaluate_and_gatekeep: Offline validation on NDCG@10 and Recall@50 against quality gate.
-6. export_triton_onnx: Exports models to ONNX and updates Triton model repository.
-7. invalidate_redis_cache: Flushes stale cached recommendations to serve fresh predictions.
-"""
-
 from datetime import datetime, timedelta
 import os
 import sys
 
-# Airflow imports with safe fallback for static analysis and standalone validation
 try:
     from airflow import DAG
     from airflow.operators.python import PythonOperator
-    from airflow.operators.bash import BashOperator
-    from airflow.utils.dates import days_ago
     AIRFLOW_AVAILABLE = True
 except ImportError:
     AIRFLOW_AVAILABLE = False
     DAG = object
 
 default_args = {
-    'owner': 'mlops_rec_team',
+    'owner': 'mlops',
     'depends_on_past': False,
     'start_date': datetime(2026, 1, 1),
-    'email': ['mlops@recsys.example.com'],
-    'email_on_failure': True,
-    'email_on_retry': False,
     'retries': 2,
     'retry_delay': timedelta(minutes=5),
     'execution_timeout': timedelta(hours=2)
@@ -61,9 +42,7 @@ def task_train_rankers(**kwargs):
 def task_evaluate_gatekeep(**kwargs):
     from src.evaluation.offline_eval import run_offline_evaluation
     benchmark = run_offline_evaluation(sample_users=50)
-    # Quality gate: check minimum NDCG
     ndcg = benchmark["Stage2_DCN_v2"]["ndcg@10"]
-    print(f"DCN-v2 validation NDCG@10: {ndcg}")
     return "Evaluation quality gate passed."
 
 def task_export_triton(**kwargs):
@@ -81,10 +60,9 @@ if AIRFLOW_AVAILABLE:
     dag = DAG(
         'recommendation_engine_retraining_pipeline',
         default_args=default_args,
-        description='Automated retraining and deployment for two-stage recommender',
-        schedule_interval='0 2 * * *', # Daily at 02:00 AM
+        schedule_interval='0 2 * * *',
         catchup=False,
-        tags=['recommendation', 'two-tower', 'dcn', 'faiss', 'triton']
+        tags=['recommendation', 'retrieval', 'ranking', 'faiss', 'triton']
     )
 
     t1_spark = PythonOperator(
@@ -129,8 +107,6 @@ if AIRFLOW_AVAILABLE:
         dag=dag
     )
 
-    # Pipeline task dependency DAG
     t1_spark >> t2_retrieval >> t3_faiss
     t1_spark >> t4_ranking
     [t3_faiss, t4_ranking] >> t5_gatekeep >> t6_triton >> t7_cache
-

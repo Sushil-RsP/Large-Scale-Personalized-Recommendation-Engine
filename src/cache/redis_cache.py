@@ -1,12 +1,3 @@
-"""
-Redis Caching Layer for Recommendation Engine.
-Implements:
-- Cache-aside pattern for personalized and cold-start recommendations.
-- Configurable TTL expiration (default: 300 seconds).
-- Automatic failover to an in-memory LRU cache when Redis daemon is unavailable.
-- Real-time cache hit / miss telemetry.
-"""
-
 import os
 import time
 import json
@@ -30,10 +21,9 @@ class InMemoryCache:
         if key in self.store:
             if time.time() < self.expiries.get(key, float("inf")):
                 return self.store[key]
-            else:
-                del self.store[key]
-                if key in self.expiries:
-                    del self.expiries[key]
+            del self.store[key]
+            if key in self.expiries:
+                del self.expiries[key]
         return None
 
     def set(self, key, value, ex=None):
@@ -69,9 +59,7 @@ class RecommendationCache:
                 r = redis.Redis(host=self.host, port=self.port, db=self.db, socket_connect_timeout=0.5)
                 r.ping()
                 self.client = r
-                logger.info(f"Connected to Redis server at {self.host}:{self.port}")
-            except Exception as e:
-                logger.warning(f"Could not connect to Redis ({e}). Using in-memory fallback cache.")
+            except Exception:
                 self.using_in_memory = True
                 self.client = InMemoryCache(default_ttl=default_ttl)
         else:
@@ -120,10 +108,7 @@ class RecommendationCache:
         try:
             ex = ttl or self.default_ttl
             payload = json.dumps(value)
-            if self.using_in_memory:
-                self.client.set(key, payload, ex=ex)
-            else:
-                self.client.set(key, payload, ex=ex)
+            self.client.set(key, payload, ex=ex)
             return True
         except Exception as e:
             logger.error(f"Cache set error: {e}")
@@ -164,4 +149,3 @@ class RecommendationCache:
             "total_requests": total,
             "hit_ratio": round(hit_ratio, 4)
         }
-

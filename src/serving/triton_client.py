@@ -1,12 +1,5 @@
-"""
-Triton Inference Client with seamless Local ONNXRuntime fallback.
-Connects to Triton Inference Server over HTTP/gRPC when deployed in production,
-and transparently utilizes local ONNXRuntime sessions for testing and local operation.
-"""
-
 import os
 import sys
-import json
 import logging
 import numpy as np
 
@@ -25,18 +18,15 @@ class TritonInferenceClient:
         self.triton_live = False
         self.ort_sessions = {}
 
-        # Attempt to probe Triton
         try:
             import requests
             resp = requests.get(f"{self.triton_url}/v2/health/ready", timeout=0.5)
             if resp.status_code == 200:
                 self.triton_live = True
-                logger.info(f"Connected to Triton Inference Server at {self.triton_url}")
         except Exception:
             self.triton_live = False
 
         if not self.triton_live:
-            # Initialize high-performance local ONNXRuntime engines
             opts = ort.SessionOptions()
             opts.intra_op_num_threads = 2
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
@@ -53,9 +43,6 @@ class TritonInferenceClient:
                 self.ort_sessions["ranking_wide_deep"] = ort.InferenceSession(wide_deep_onnx, opts, providers=["CPUExecutionProvider"])
 
     def infer_user_tower(self, user_id_int, user_genres_np, user_stats_np):
-        """
-        Runs User Tower inference to produce a 64-dimensional user embedding.
-        """
         user_id_arr = np.array([user_id_int], dtype=np.int64)
         user_genres_arr = user_genres_np.reshape(1, -1).astype(np.float32)
         user_stats_arr = user_stats_np.reshape(1, -1).astype(np.float32)
@@ -73,7 +60,6 @@ class TritonInferenceClient:
             data = resp.json()
             return np.array(data["outputs"][0]["data"], dtype=np.float32).reshape(1, -1)
 
-        # Local ONNXRuntime execution
         session = self.ort_sessions.get("user_tower")
         if session is None:
             raise RuntimeError("User Tower ONNX session not loaded.")
@@ -87,10 +73,6 @@ class TritonInferenceClient:
         return outputs[0]
 
     def infer_ranker(self, model_name, user_ids_arr, item_ids_arr, dense_features_arr):
-        """
-        Runs batch candidate re-scoring using DCN-v2 or Wide & Deep.
-        model_name: 'ranking_dcn' or 'ranking_wide_deep'
-        """
         if self.triton_live:
             import requests
             batch_size = len(user_ids_arr)
@@ -116,4 +98,3 @@ class TritonInferenceClient:
         }
         outputs = session.run(["ctr_score"], inputs)
         return outputs[0]
-

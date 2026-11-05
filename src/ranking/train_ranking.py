@@ -1,24 +1,16 @@
-"""
-Training pipeline for Ranking Models: DCN-v2 and Wide & Deep.
-Trains on temporal interactions with binary cross-entropy loss,
-evaluates ROC-AUC and Log-Loss, and prepares models for Triton serving and A/B testing.
-"""
-
 import os
 import sys
 import json
-import time
-
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
-
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import numpy as np
-from sklearn.metrics import roc_auc_score, log_loss, accuracy_score
+from sklearn.metrics import roc_auc_score, accuracy_score
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from src.ranking.dcn import DeepAndCrossNetwork
 from src.ranking.wide_deep import WideAndDeepNetwork
@@ -33,7 +25,6 @@ class RankingDataset(Dataset):
         self.genres = genres
         genre_cols = [f"genre_{g.lower()}" for g in genres]
 
-        # User lookup
         user_map = {}
         for _, row in user_df.iterrows():
             uid = int(row["userId"])
@@ -42,7 +33,6 @@ class RankingDataset(Dataset):
             norm_rating = float((row.get("user_avg_rating", 3.0) - 1.0) / 4.0)
             user_map[u_idx] = np.array([norm_count, norm_rating], dtype=np.float32)
 
-        # Movie lookup
         movie_map = {}
         for _, row in movies_df.iterrows():
             mid = int(row["movieId"])
@@ -53,12 +43,10 @@ class RankingDataset(Dataset):
             norm_year = float((row.get("year", 2000) - 1920) / 100.0)
             movie_map[m_idx] = (g_vec, np.array([norm_pop, norm_rating, norm_year], dtype=np.float32))
 
-        # Build feature rows
         user_ids = []
         item_ids = []
         dense_feats = []
         labels = []
-
         all_movie_indices = list(movie_map.keys())
 
         for _, row in ratings_df.iterrows():
@@ -72,7 +60,6 @@ class RankingDataset(Dataset):
             u_stats = user_map.get(u_idx, np.array([0.0, 0.5], dtype=np.float32))
             g_vec, m_stats = movie_map.get(m_idx, (np.zeros(len(genres), dtype=np.float32), np.array([0.0, 0.5, 0.8], dtype=np.float32)))
 
-            # Retrieval sim proxy: dot product between normalized popularity and user engagement
             retrieval_sim = float(np.clip(u_stats[1] * m_stats[1], 0.0, 1.0))
             dense_vec = np.concatenate([u_stats, m_stats, g_vec, [retrieval_sim]]).astype(np.float32)
 
@@ -81,7 +68,6 @@ class RankingDataset(Dataset):
             dense_feats.append(dense_vec)
             labels.append(float(row["label"]))
 
-            # Negative sampling during training for better discrimination
             if is_train and row["label"] == 1.0 and np.random.rand() < 0.5:
                 neg_m_idx = np.random.choice(all_movie_indices)
                 neg_g_vec, neg_m_stats = movie_map[neg_m_idx]
@@ -116,7 +102,6 @@ def train_single_model(model, train_loader, val_loader, model_name, epochs=6, lr
     best_val_auc = 0.0
     history = []
 
-    print(f"\n--- Training {model_name} on {device} ---")
     for epoch in range(1, epochs + 1):
         model.train()
         total_loss = 0.0
@@ -135,7 +120,6 @@ def train_single_model(model, train_loader, val_loader, model_name, epochs=6, lr
 
         avg_train_loss = total_loss / len(train_loader)
 
-        # Validation
         model.eval()
         val_preds, val_targets = [], []
         val_loss = 0.0
@@ -155,7 +139,7 @@ def train_single_model(model, train_loader, val_loader, model_name, epochs=6, lr
         val_auc = roc_auc_score(val_targets, val_preds) if len(np.unique(val_targets)) > 1 else 0.5
         val_acc = accuracy_score(val_targets, np.array(val_preds) >= 0.5)
 
-        print(f"Epoch {epoch:02d}/{epochs:02d} | Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Val AUC: {val_auc:.4f} | Val Acc: {val_acc:.4f}")
+        print(f"[{model_name}] Epoch {epoch:02d}/{epochs:02d} | Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Val AUC: {val_auc:.4f} | Val Acc: {val_acc:.4f}")
         history.append({
             "epoch": epoch,
             "train_loss": avg_train_loss,
@@ -188,7 +172,6 @@ def train_ranking_models():
     user_df = pd.read_parquet(os.path.join(DATA_DIR, "user_features.parquet"))
     movies_df = pd.read_parquet(os.path.join(DATA_DIR, "movies_features.parquet"))
 
-    print("Building ranking datasets with negative sampling...")
     train_ds = RankingDataset(train_df, user_df, movies_df, user2idx, movie2idx, meta["genres"], is_train=True)
     val_ds = RankingDataset(val_df, user_df, movies_df, user2idx, movie2idx, meta["genres"], is_train=False)
 
@@ -197,7 +180,6 @@ def train_ranking_models():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # 1. Train DCN-v2
     dcn_model = DeepAndCrossNetwork(
         num_users=meta["num_users"] + 1,
         num_items=meta["num_items"] + 1,
@@ -209,7 +191,6 @@ def train_ranking_models():
     ).to(device)
     dcn_history, best_dcn_auc = train_single_model(dcn_model, train_loader, val_loader, "DCN_v2", epochs=6, device=device)
 
-    # 2. Train Wide & Deep
     wd_model = WideAndDeepNetwork(
         num_users=meta["num_users"] + 1,
         num_items=meta["num_items"] + 1,
@@ -227,11 +208,7 @@ def train_ranking_models():
     with open(os.path.join(MODEL_DIR, "ranking_metrics.json"), "w") as f:
         json.dump(summary, f, indent=2)
 
-    print("\nRanking models training complete!")
-    print(f"  DCN-v2 Best AUC: {best_dcn_auc:.4f}")
-    print(f"  Wide & Deep Best AUC: {best_wd_auc:.4f}")
     return summary
 
 if __name__ == "__main__":
     train_ranking_models()
-

@@ -1,26 +1,19 @@
-"""
-Training script for the Two-Tower Retrieval Model.
-Trains on temporal interactions with in-batch contrastive loss, evaluates Recall@K,
-and saves weights for FAISS indexing and Triton export.
-"""
-
 import os
 import sys
 import json
-
-# Ensure project root is in sys.path
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
-
 import torch
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import numpy as np
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from src.retrieval.two_tower import TwoTowerRetrievalModel
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "processed")
-MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "models", "retrieval")
+DATA_DIR = os.path.join(PROJECT_ROOT, "data", "processed")
+MODEL_DIR = os.path.join(PROJECT_ROOT, "models", "retrieval")
 
 class RetrievalInteractionDataset(Dataset):
     def __init__(self, ratings_df, user_df, movies_df, user2idx, movie2idx, genres):
@@ -28,19 +21,16 @@ class RetrievalInteractionDataset(Dataset):
         self.movie2idx = movie2idx
         self.genres = genres
 
-        # Map user features
         user_feat_dict = {}
         genre_cols = [f"genre_{g.lower()}" for g in genres]
         for _, row in user_df.iterrows():
             uid = int(row["userId"])
             u_idx = user2idx.get(uid, 0)
             g_prefs = row[genre_cols].values.astype(np.float32)
-            # normalize count and avg rating
             norm_count = float(np.log1p(row.get("user_interaction_count", 0.0)))
             norm_rating = float((row.get("user_avg_rating", 3.0) - 1.0) / 4.0)
             user_feat_dict[u_idx] = (g_prefs, np.array([norm_count, norm_rating], dtype=np.float32))
 
-        # Map movie features
         movie_feat_dict = {}
         for _, row in movies_df.iterrows():
             mid = int(row["movieId"])
@@ -51,7 +41,6 @@ class RetrievalInteractionDataset(Dataset):
             norm_year = float((row.get("year", 2000) - 1920) / 100.0)
             movie_feat_dict[m_idx] = (g_vec, np.array([norm_pop, norm_rating, norm_year], dtype=np.float32))
 
-        # Filter for positive interactions (rating >= 3.5)
         pos_ratings = ratings_df[ratings_df["label"] == 1.0].copy()
         self.samples = []
         for _, row in pos_ratings.iterrows():
@@ -72,7 +61,6 @@ class RetrievalInteractionDataset(Dataset):
 
     def __getitem__(self, idx):
         u_idx, m_idx = self.samples[idx]
-
         u_genres, u_stats = self.user_feat_dict.get(u_idx, (self.default_user_genre, self.default_user_stats))
         m_genres, m_stats = self.movie_feat_dict.get(m_idx, (self.default_movie_genre, self.default_movie_stats))
 
@@ -110,8 +98,6 @@ def train_retrieval_model(epochs=8, batch_size=256, lr=1e-3):
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Training Two-Tower Retrieval on device: {device} | Train samples: {len(train_ds)}")
-
     model = TwoTowerRetrievalModel(
         num_users=meta["num_users"] + 1,
         num_items=meta["num_items"] + 1,
@@ -121,7 +107,6 @@ def train_retrieval_model(epochs=8, batch_size=256, lr=1e-3):
     ).to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
-
     best_loss = float("inf")
     metrics_history = []
 
@@ -150,7 +135,6 @@ def train_retrieval_model(epochs=8, batch_size=256, lr=1e-3):
 
         avg_train_loss = total_loss / len(train_loader)
 
-        # Validation Loss
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
@@ -182,9 +166,7 @@ def train_retrieval_model(epochs=8, batch_size=256, lr=1e-3):
     with open(os.path.join(MODEL_DIR, "retrieval_metrics.json"), "w") as f:
         json.dump(metrics_history, f, indent=2)
 
-    print(f"Two-Tower model saved to {MODEL_DIR} (Best Val Loss: {best_loss:.4f})")
     return model
 
 if __name__ == "__main__":
     train_retrieval_model()
-
