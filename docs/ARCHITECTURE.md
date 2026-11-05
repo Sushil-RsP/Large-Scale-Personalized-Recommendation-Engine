@@ -91,30 +91,30 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph Client
-        Browser[Interactive Web Dashboard]
-        APIClient[Client Applications]
+    subgraph SubgraphClient ["Client Tier"]
+        Browser["Interactive Web Dashboard"]
+        APIClient["Client Applications"]
     end
 
-    subgraph "Serving Tier"
-        FastAPI[FastAPI Gateway :8080]
-        Router[A/B Traffic Splitter]
+    subgraph SubgraphServing ["Serving Tier"]
+        FastAPI["FastAPI Gateway"]
+        Router["A/B Traffic Splitter"]
     end
 
-    subgraph "Inference Tier"
-        Triton[NVIDIA Triton Inference Server :8000]
-        ONNXRuntime[Embedded ONNXRuntime Engine]
+    subgraph SubgraphInference ["Inference Tier"]
+        Triton["NVIDIA Triton Inference Server"]
+        ONNXRuntime["Embedded ONNXRuntime Engine"]
     end
 
-    subgraph "Data & Storage Tier"
-        Redis[(Redis Cache :6379)]
-        FAISSIndex[(FAISS Vector Index)]
-        ParquetLake[(Parquet Feature Lake)]
+    subgraph SubgraphStorage ["Data and Storage Tier"]
+        Redis[("Redis Cache")]
+        FAISSIndex[("FAISS Vector Index")]
+        ParquetLake[("Parquet Feature Lake")]
     end
 
-    subgraph "Orchestration"
-        Airflow[Apache Airflow Scheduler]
-        Spark[PySpark Processing Engine]
+    subgraph SubgraphOrchestration ["Orchestration"]
+        Airflow["Apache Airflow Scheduler"]
+        Spark["PySpark Processing Engine"]
     end
 
     Browser --> FastAPI

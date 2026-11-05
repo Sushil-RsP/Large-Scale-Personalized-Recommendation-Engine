@@ -29,7 +29,7 @@
    - Developed the Redis cache-aside pattern with TTL expiration and transparent in-memory failover.
    - Formulated the online A/B testing statistical engine with consistent user hashing and two-sample proportion Z-testing.
    - Authored the Apache Airflow DAG (`recsys_retraining_dag.py`) automating daily retraining, quality gates, and cache invalidation.
-   - Developed the interactive full-stack Web UI and comprehensive pytest suite (18 passing tests).
+   - Developed the interactive full-stack Web UI and comprehensive pytest suite (19 passing tests).
 
 ---
 
@@ -55,7 +55,7 @@
 
 ## 3. Impact & What Sets This Project Apart
 
-- **Production-Ready Code Quality:** Zero placeholder stubs; all 18 automated unit and integration tests pass cleanly with high test coverage.
+- **Production-Ready Code Quality:** Zero placeholder stubs; all 19 automated unit and integration tests pass cleanly with high test coverage.
 - **Enterprise-Grade Resiliency:** Full support for Triton, Redis, and PySpark with automatic zero-configuration local fallbacks (ONNXRuntime, in-memory LRU cache, vectorized engine), ensuring seamless developer onboarding and containerized cloud deployment.
 - **Statistical Rigor:** Implemented formal offline ranking metrics (NDCG, Recall, MRR) and online A/B testing hypothesis tests (Z-test, $p$-value, confidence intervals).
 

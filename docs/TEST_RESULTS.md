@@ -2,33 +2,33 @@
 
 ## 1. Automated Test Suite Summary (`pytest`)
 
-The complete test suite verifies the system across 8 test suites covering data processing, retrieval geometry, FAISS vector indexing, deep ranking model math, cold-start fallbacks, caching, evaluation metrics, and API endpoints.
+The complete test suite verifies the system across 8 test modules covering data processing, retrieval geometry, FAISS vector indexing, deep ranking model math, cold-start fallbacks, caching, evaluation metrics, and API endpoints.
 
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.12.10, pytest-9.2.0
-rootdir: D:\Project file\inter_project_1
 
 tests/test_api.py::test_system_info_endpoint PASSED                      [  5%]
-tests/test_api.py::test_warm_recommendation_endpoint PASSED              [ 11%]
-tests/test_api.py::test_cold_start_recommendation_endpoint PASSED        [ 16%]
-tests/test_api.py::test_ab_test_metrics_and_event PASSED                 [ 22%]
-tests/test_cold_start.py::test_popular_diverse_fallback PASSED           [ 27%]
-tests/test_cold_start.py::test_content_based_onboarding_fallback PASSED  [ 33%]
-tests/test_evaluation.py::test_perfect_ndcg PASSED                       [ 38%]
-tests/test_evaluation.py::test_zero_ndcg PASSED                          [ 44%]
-tests/test_evaluation.py::test_recall_at_k PASSED                        [ 50%]
-tests/test_evaluation.py::test_mrr PASSED                                [ 55%]
-tests/test_ranking.py::test_dcn_v2_forward PASSED                        [ 61%]
-tests/test_ranking.py::test_wide_deep_forward PASSED                     [ 66%]
-tests/test_redis_cache.py::test_in_memory_cache_expiry PASSED            [ 72%]
-tests/test_redis_cache.py::test_recommendation_cache_workflow PASSED     [ 77%]
-tests/test_retrieval.py::test_user_and_item_tower_shapes PASSED          [ 83%]
-tests/test_retrieval.py::test_faiss_retriever PASSED                     [ 88%]
+tests/test_api.py::test_warm_recommendation_endpoint PASSED              [ 10%]
+tests/test_api.py::test_cold_start_recommendation_endpoint PASSED        [ 15%]
+tests/test_api.py::test_ab_test_metrics_and_event PASSED                 [ 21%]
+tests/test_cold_start.py::test_popular_diverse_fallback PASSED           [ 26%]
+tests/test_cold_start.py::test_content_based_onboarding_fallback PASSED  [ 31%]
+tests/test_evaluation.py::test_perfect_ndcg PASSED                       [ 36%]
+tests/test_evaluation.py::test_zero_ndcg PASSED                          [ 42%]
+tests/test_evaluation.py::test_recall_at_k PASSED                        [ 47%]
+tests/test_evaluation.py::test_mrr PASSED                                [ 52%]
+tests/test_evaluation.py::test_ab_testing_clicks_exceed_impressions_no_math_domain_error PASSED [ 57%]
+tests/test_ranking.py::test_dcn_v2_forward PASSED                        [ 63%]
+tests/test_ranking.py::test_wide_deep_forward PASSED                     [ 68%]
+tests/test_redis_cache.py::test_in_memory_cache_expiry PASSED            [ 73%]
+tests/test_redis_cache.py::test_recommendation_cache_workflow PASSED     [ 78%]
+tests/test_retrieval.py::test_user_and_item_tower_shapes PASSED          [ 84%]
+tests/test_retrieval.py::test_faiss_retriever PASSED                     [ 89%]
 tests/test_spark_pipeline.py::test_temporal_split_no_leakage PASSED      [ 94%]
 tests/test_spark_pipeline.py::test_feature_integrity PASSED              [100%]
 
-============================= 18 passed in 60.96s =============================
+============================= 19 passed in 65.62s =============================
 ```
 
 ---

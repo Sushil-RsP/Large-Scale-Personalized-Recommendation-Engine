@@ -5,7 +5,7 @@
 [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-009688.svg)](https://github.com/facebookresearch/faiss)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009485.svg)](https://fastapi.tiangolo.com)
 [![PySpark](https://img.shields.io/badge/PySpark-4.0+-E25A1C.svg)](https://spark.apache.org)
-[![Tests](https://img.shields.io/badge/Tests-18%20Passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-19%20Passed-brightgreen.svg)](tests/)
 
 An industrial-grade, two-stage personalized recommendation engine modeled after the production architectures of Netflix, YouTube, and Amazon.
 
@@ -73,7 +73,7 @@ flowchart TD
 - **Serving & Gateway:** FastAPI, Uvicorn, NVIDIA Triton Inference Server (`config.pbtxt`), ONNXRuntime
 - **Caching:** Redis (Cache-aside with TTL and In-Memory LRU fallback)
 - **Pipeline Orchestration:** Apache Airflow DAG
-- **Testing:** Pytest (18 automated tests)
+- **Testing:** Pytest (19 automated tests)
 
 ---
 
@@ -116,7 +116,7 @@ python -m src.serving.triton_export
 ```bash
 python -m pytest tests/ -v
 ```
-*Expected: 18 passed tests in ~60s.*
+*Expected: 19 passed tests in ~65s.*
 
 ### 4. Launch the Interactive Serving Gateway & Web UI
 ```bash
@@ -201,7 +201,7 @@ docker-compose up --build
 - [x] **Working Demo & UI:** Interactive web dashboard at `http://localhost:8080` with stage latency waterfalls, candidate inspection, and live A/B test simulation.
 - [x] **Clean GitHub Repository:** Clean directory layout, modular code, pinned `requirements.txt`, `Dockerfile`, and `docker-compose.yml`.
 - [x] **Architecture Diagram & API Docs:** Detailed Mermaid flowcharts in `docs/ARCHITECTURE.md` and complete contracts in `docs/API_DOCS.md`.
-- [x] **Test Results & Benchmarks:** All 18 pytest tests passing; offline evaluations documented in `docs/TEST_RESULTS.md`.
+- [x] **Test Results & Benchmarks:** All 19 pytest tests passing; offline evaluations documented in `docs/TEST_RESULTS.md`.
 - [x] **10-Minute Presentation:** Structured slide deck and speaker notes in `docs/PRESENTATION.md`.
 - [x] **Individual Reflection:** Detailed ownership breakdown and technical learnings in `docs/INTERN_REFLECTION.md`.
 
